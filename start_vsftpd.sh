@@ -64,7 +64,10 @@ if [ ! -z "$ADDRESS" ]; then
   ADDR_OPT="-opasv_address=$ADDRESS"
 fi
 
-echo "$1"
+echo "Enabling Logging to STDOUT"
+mkdir -p /var/log/vsftpd
+touch /var/log/vsftpd.log
+tail -f /var/log/vsftpd.log | tee /dev/stdout &
 
 # Used to run custom commands inside container
 if [ ! -z "$1" ]; then
@@ -72,6 +75,5 @@ if [ ! -z "$1" ]; then
   exec "$@"
 else
   echo "Starting vsftpd..."
-  echo "exec /usr/sbin/vsftpd -opasv_min_port=$MIN_PORT -opasv_max_port=$MAX_PORT $ADDR_OPT /etc/vsftpd/vsftpd.conf"
   exec /usr/sbin/vsftpd -opasv_min_port=$MIN_PORT -opasv_max_port=$MAX_PORT $ADDR_OPT /etc/vsftpd/vsftpd.conf
 fi
