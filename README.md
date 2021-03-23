@@ -5,7 +5,7 @@
 docker run -d \
     -p 21:21 \
     -p 21000-21010:21000-21010 \
-    -e USERS="one|oneONE123!@#" \
+    -e USERS="one|twoTHIRD123#$%" \
     -e GROUP="1000|ftp" \
     -e ADDRESS=ftp.site.domain \
     3bittalk/docker-vsftpd

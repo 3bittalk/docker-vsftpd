@@ -1,7 +1,7 @@
 #!/bin/sh
 
 #Remove all ftp users
-grep '/ftp/' /etc/passwd | cut -d':' -f1 | xargs -n1 deluser
+grep '/ftp/' /etc/passwd | cut -d':' -f1 | xargs -I {} -n1 deluser --remove-home {}
 
 #Create users
 #USERS='name1|password1|[folder1][|uid1] name2|password2|[folder2][|uid2]'
@@ -25,9 +25,9 @@ fi
 GROUPID=$(echo $GROUP | cut -d'|' -f1)
 GROUPNAME=$(echo $GROUP | cut -d'|' -f2)
 
-groupadd -g $GROUPID $GROUPNAME
+addgroup --system -g $GROUPID $GROUPNAME
 
-GID_OPT="--gid $GROUPID"
+GNAME_OPT="-G $GROUPNAME"
 
 for i in $USERS ; do
     NAME=$(echo $i | cut -d'|' -f1)
@@ -43,7 +43,9 @@ for i in $USERS ; do
     UID_OPT="-u $UID"
   fi
 
-  echo -e "$PASS\n$PASS" | adduser -h $FOLDER -s /sbin/nologin $UID_OPT $GID_OPT $NAME
+  echo -e "$PASS\n$PASS" | adduser -h $FOLDER -s /sbin/nologin $UID_OPT $NAME
+  addgroup $NAME $GROUPNAME
+
   mkdir -p $FOLDER
   chown $NAME:$GROUPNAME $FOLDER
   unset NAME PASS FOLDER UID
@@ -62,9 +64,14 @@ if [ ! -z "$ADDRESS" ]; then
   ADDR_OPT="-opasv_address=$ADDRESS"
 fi
 
+echo "$1"
+
 # Used to run custom commands inside container
 if [ ! -z "$1" ]; then
+  echo "Starting $@[$1]..."
   exec "$@"
 else
+  echo "Starting vsftpd..."
+  echo "exec /usr/sbin/vsftpd -opasv_min_port=$MIN_PORT -opasv_max_port=$MAX_PORT $ADDR_OPT /etc/vsftpd/vsftpd.conf"
   exec /usr/sbin/vsftpd -opasv_min_port=$MIN_PORT -opasv_max_port=$MAX_PORT $ADDR_OPT /etc/vsftpd/vsftpd.conf
 fi
