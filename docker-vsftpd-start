@@ -1,0 +1,63 @@
+#!/bin/sh
+
+#Remove all ftp users
+grep '/ftp/' /etc/passwd | cut -d':' -f1 | xargs -I {} -n1 deluser --remove-home {}
+
+#Create users
+#USERS='uid1|name1[|folder1] uid2|name2[|folder2]'
+
+if [ -z "$USERS" ]; then
+  USERS="21|ftp"
+fi
+
+for i in $USERS ; do
+  USERID=$(echo $i | cut -d'|' -f1)
+  if [ ! -z "$USERID" ]; then
+    UID_OPT="-u $USERID"
+  fi
+  
+  NAME=$(echo $i | cut -d'|' -f2)
+  if [ -z "$NAME" ]; then
+    echo "Add user to USERS. Format should be the following 'uid1|name1[|folder1] uid2|name2[|folder2]'"
+    exit 123
+  fi
+
+  FOLDER=$(echo $i | cut -d'|' -f3)
+  if [ -z "$FOLDER" ]; then
+    FOLDER="/ftp/$NAME"
+  fi
+
+  PASS_VAR=$(echo "USER_${NAME}_PASSW" | tr a-z A-Z)
+  PASS=$(printenv | grep $PASS_VAR | grep -oe '[^=]*$');
+  if [ -z "$PASS" ]; then
+    PASS=$(pwgen -ys 15 1)
+    echo "Generated passwd for user $NAME the following: ${PASS}"
+  fi
+
+  mkdir -p $FOLDER
+
+  echo -e "$PASS\n$PASS" | adduser -h $FOLDER -s /sbin/nologin $UID_OPT $NAME
+
+  chown $NAME:$NAME $FOLDER
+  unset NAME PASS FOLDER USERID PASS_VAR
+done
+
+if [ -z "$MIN_PORT" ]; then
+  MIN_PORT=21000
+fi
+
+if [ -z "$MAX_PORT" ]; then
+  MAX_PORT=21010
+fi
+
+if [ ! -z "$ADDRESS" ]; then
+  ADDR_OPT="-opasv_address=$ADDRESS"
+fi
+
+echo "Enabling Logging to STDOUT..." 
+mkdir -p /var/log/vsftpd
+touch /var/log/vsftpd.log
+tail -f /var/log/vsftpd.log | tee /dev/stdout &
+
+echo "Starting vsftpd..."
+exec /usr/sbin/vsftpd -opasv_min_port=$MIN_PORT -opasv_max_port=$MAX_PORT $ADDR_OPT /etc/vsftpd/vsftpd.conf
